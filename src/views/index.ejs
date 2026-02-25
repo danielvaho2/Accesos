@@ -1,12 +1,3 @@
-<!--
-  src/views/index.ejs
-  Plantilla EJS que muestra la tabla de empleados y el formulario
-  para subir un archivo Excel.
-
-  Variables esperadas desde el servidor:
-  - `usuarios`: array de objetos con campos `Nombre`, `Dia`, `Hora_entrada`,
-    `Hora_salida`, `horas_laboradas`, `extra_diurna_total`, `extra_nocturna`.
--->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -27,44 +18,121 @@
       <p class="text-muted">Control de registros de empleados</p>
     </div>
 
-    <!-- Tabla -->
-    <div class="card shadow mb-5">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Empleados</h4>
+    <!-- FILTRO -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-dark text-white">
+        <h4 class="mb-0">Filtrar Registros</h4>
       </div>
-      <div class="card-body table-responsive">
+      <div class="card-body">
+        <form method="GET" action="/" class="row g-3 align-items-end">
 
-        <table class="table table-striped table-bordered table-hover align-middle text-center">
-          <thead class="table-dark">
-            <tr>
-              <th>Nombre</th>
-              <th>Fecha</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-              <th>Horas Laboradas</th>
-              <th>Extra Diurna</th>
-              <th>Extra Nocturna</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% usuarios.forEach(user => { %>
-              <tr>
-                <td><%= user.Nombre %></td>
-                <td><%= user.Dia %></td>
-                <td><%= user.Hora_entrada %></td>
-                <td><%= user.Hora_salida %></td>
-                <td><%= user.horas_laboradas %></td>
-                <td><%= user.extra_diurna_total %></td>
-                <td><%= user.extra_nocturna %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+          <div class="col-md-3">
+            <label class="form-label">Desde</label>
+            <input 
+              type="date" 
+              name="fechaInicio" 
+              class="form-control"
+              value="<%= typeof fechaInicio !== 'undefined' ? fechaInicio : '' %>"
+            >
+          </div>
 
+          <div class="col-md-3">
+            <label class="form-label">Hasta</label>
+            <input 
+              type="date" 
+              name="fechaFin" 
+              class="form-control"
+              value="<%= typeof fechaFin !== 'undefined' ? fechaFin : '' %>"
+            >
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Nombre</label>
+            <input 
+              type="text" 
+              name="nombre" 
+              class="form-control"
+              placeholder="Buscar empleado..."
+              value="<%= typeof nombre !== 'undefined' ? nombre : '' %>"
+            >
+          </div>
+
+          <div class="col-md-3 d-grid">
+            <button class="btn btn-primary" type="submit">
+              🔎 Filtrar
+            </button>
+          </div>
+
+          <div class="col-md-3 d-grid">
+            <a href="/" class="btn btn-secondary">
+              ♻ Limpiar
+            </a>
+          </div>
+
+        </form>
       </div>
     </div>
 
-    <!-- Subir archivo -->
+
+    <!-- TABLA -->
+    <div class="card shadow mb-5">
+  <div class="card-header bg-primary text-white">
+    <h4 class="mb-0">Resultados</h4>
+  </div>
+  <div class="card-body table-responsive">
+
+    <table class="table table-striped table-bordered table-hover align-middle text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>Nombre</th>
+          <th>Fecha</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Horas Laboradas</th>
+          <th>Extra Diurna</th>
+          <th>Extra Nocturna</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <% if (usuarios.length === 0) { %>
+          <tr>
+            <td colspan="7" class="text-muted">
+              No hay registros disponibles
+            </td>
+          </tr>
+        <% } %>
+
+        <% usuarios.forEach(user => { %>
+          <tr>
+            <td><%= user.Nombre %></td>
+            <td><%= user.Dia %></td>
+            <td><%= user.Hora_entrada %></td>
+            <td><%= user.Hora_salida %></td>
+            <td><%= user.horas_laboradas %></td>
+            <td><%= user.extra_diurna_total %></td>
+            <td><%= user.extra_nocturna %></td>
+          </tr>
+        <% }) %>
+
+        <% if (hacerSumatoria && totales) { %>
+          <tr class="table-warning fw-bold">
+            <td colspan="4">TOTAL</td>
+            <td><%= totales.horas %></td>
+            <td><%= totales.extra_diurna %></td>
+            <td><%= totales.extra_nocturna %></td>
+          </tr>
+        <% } %>
+
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+
+    <!-- SUBIR EXCEL -->
     <div class="card shadow">
       <div class="card-header bg-success text-white">
         <h4 class="mb-0">Subir Excel de empleados</h4>

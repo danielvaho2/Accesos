@@ -5,8 +5,28 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    // Ejecuta la consulta
-    const result = await pool.request().query(`
+    const { fechaInicio, fechaFin, nombre } = req.query;
+
+    const request = pool.request();
+    let condiciones = [];
+
+    if (fechaInicio && fechaFin) {
+      request.input("fechaInicio", fechaInicio);
+      request.input("fechaFin", fechaFin);
+      condiciones.push("Dia BETWEEN @fechaInicio AND @fechaFin");
+    }
+
+    if (nombre) {
+      request.input("nombre", `%${nombre}%`);
+      condiciones.push("Nombre LIKE @nombre");
+    }
+
+    const whereClause =
+      condiciones.length > 0 ? `WHERE ${condiciones.join(" AND ")}` : "";
+
+    const hacerSumatoria = fechaInicio && fechaFin && nombre;
+
+    const result = await request.query(`
 WITH base AS (
     SELECT
         Nombre,
@@ -16,14 +36,15 @@ WITH base AS (
         DATEADD(SECOND, DATEDIFF(SECOND, Hora_entrada, Hora_salida) - 3600, 0) AS horas_reales,
         DATEPART(WEEKDAY, Dia) AS dia_num
     FROM USUARIOS
+    ${whereClause}
 ),
 limites AS (
     SELECT *,
         CASE 
-            WHEN dia_num = 2 THEN 7*3600      -- Lunes
-            WHEN dia_num = 7 THEN 5*3600      -- Sábado
-            WHEN dia_num = 1 THEN 0           -- Domingo
-            ELSE 8*3600                       -- Martes a Viernes
+            WHEN dia_num = 2 THEN 7*3600
+            WHEN dia_num = 7 THEN 5*3600
+            WHEN dia_num = 1 THEN 0
+            ELSE 8*3600
         END AS limite_segundos
     FROM base
 ),
@@ -38,7 +59,6 @@ extras AS (
 ),
 tramos AS (
     SELECT *,
-        -- Extra nocturna (después de 21:00)
         CASE
             WHEN Hora_salida > '21:00:00'
                 THEN DATEDIFF(
@@ -50,64 +70,83 @@ tramos AS (
         END AS extra_noche_seg
     FROM extras
 )
+
 SELECT
     Nombre,
     FORMAT(Dia, 'dd/MM/yyyy') AS Dia,
-    Hora_entrada,
-    Hora_salida,
+    CONVERT(VARCHAR, Hora_entrada, 108) AS Hora_entrada,
+    CONVERT(VARCHAR, Hora_salida, 108) AS Hora_salida,
+    DATEDIFF(SECOND, 0,
+        DATEADD(SECOND,
+            CASE 
+                WHEN DATEDIFF(SECOND, 0, horas_reales) > limite_segundos
+                    THEN limite_segundos
+                ELSE DATEDIFF(SECOND, 0, horas_reales)
+            END, 0)
+    ) AS horas_seg,
 
-    -- Horas normales
-    DATEADD(SECOND,
-        CASE 
-            WHEN DATEDIFF(SECOND, 0, horas_reales) > limite_segundos
-                THEN limite_segundos
-            ELSE DATEDIFF(SECOND, 0, horas_reales)
-        END,
-    0) AS horas_laboradas,
+    DATEDIFF(SECOND, 0,
+        DATEADD(SECOND,
+            total_extra_seg -
+            CASE 
+                WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
+                ELSE extra_noche_seg
+            END, 0)
+    ) AS extra_diurna_seg,
 
-    -- Extra nocturna
-    DATEADD(SECOND,
-        CASE 
-            WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
-            ELSE extra_noche_seg
-        END,
-    0) AS extra_nocturna,
-
-    -- Extra diurna = total extra - nocturna
-    DATEADD(SECOND,
-        total_extra_seg -
-        CASE 
-            WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
-            ELSE extra_noche_seg
-        END,
-    0) AS extra_diurna_total
+    DATEDIFF(SECOND, 0,
+        DATEADD(SECOND,
+            CASE 
+                WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
+                ELSE extra_noche_seg
+            END, 0)
+    ) AS extra_nocturna_seg
 
 FROM tramos
+ORDER BY Dia
 `);
 
-    // Accede al array real
-    const usuarios = result.recordset;
+    let usuarios = result.recordset;
 
-    // Formatea campos de intervalo a HH:MM:SS para la vista
-   function formatearHora(dateObj) {
-  if (!dateObj) return "00:00:00";
+    function segundosAHHMMSS(seg) {
+      const horas = Math.floor(seg / 3600);
+      const minutos = Math.floor((seg % 3600) / 60);
+      const segundos = seg % 60;
+      return `${String(horas).padStart(2,"0")}:${String(minutos).padStart(2,"0")}:${String(segundos).padStart(2,"0")}`;
+    }
 
-  const horas = String(dateObj.getHours()).padStart(2, "0");
-  const minutos = String(dateObj.getMinutes()).padStart(2, "0");
-  const segundos = String(dateObj.getSeconds()).padStart(2, "0");
+    let totales = null;
 
-  return dateObj.toISOString().substring(11, 19);
-}
+    if (hacerSumatoria && usuarios.length > 0) {
 
-const usuariosFormateados = usuarios.map((u) => ({
-  ...u,
-  Hora_entrada: formatearHora(u.Hora_entrada),
-  Hora_salida: formatearHora(u.Hora_salida),
-  horas_laboradas: formatearHora(u.horas_laboradas),
-  extra_diurna_total: formatearHora(u.extra_diurna_total),
-  extra_nocturna: formatearHora(u.extra_nocturna),
-}));
-    res.render("index", { usuarios: usuariosFormateados });
+      const totalHoras = usuarios.reduce((acc, u) => acc + u.horas_seg, 0);
+      const totalExtraDiurna = usuarios.reduce((acc, u) => acc + u.extra_diurna_seg, 0);
+      const totalExtraNocturna = usuarios.reduce((acc, u) => acc + u.extra_nocturna_seg, 0);
+
+      totales = {
+        horas: segundosAHHMMSS(totalHoras),
+        extra_diurna: segundosAHHMMSS(totalExtraDiurna),
+        extra_nocturna: segundosAHHMMSS(totalExtraNocturna)
+      };
+    }
+
+    // Formatear detalle
+    usuarios = usuarios.map(u => ({
+      ...u,
+      horas_laboradas: segundosAHHMMSS(u.horas_seg),
+      extra_diurna_total: segundosAHHMMSS(u.extra_diurna_seg),
+      extra_nocturna: segundosAHHMMSS(u.extra_nocturna_seg)
+    }));
+
+    res.render("index", {
+      usuarios,
+      fechaInicio,
+      fechaFin,
+      nombre,
+      hacerSumatoria,
+      totales
+    });
+
   } catch (error) {
     console.error(error);
     res.status(500).send("Error obteniendo datos");
