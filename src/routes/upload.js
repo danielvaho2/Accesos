@@ -13,7 +13,7 @@ import { Router } from "express";
 import multer from "multer";
 import XLSX from "xlsx";
 import fs from "fs";
-import sql from "../../server.js";
+import { pool } from "../../server.js";
 
 const router = Router();
 const upload = multer({ dest: "uploads/" });
@@ -52,22 +52,21 @@ router.post("/", upload.single("file"), async (req, res) => {
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-
     const rows = XLSX.utils.sheet_to_json(sheet);
 
     for (const row of rows) {
-      const dia =
-        typeof row.Dia === "number" ? excelDateToJSDate(row.Dia) : row.Dia;
+      const dia = typeof row.Dia === "number" ? excelDateToJSDate(row.Dia) : row.Dia;
 
-      await sql`
-        INSERT INTO public."USUARIOS" ("Nombre", "Dia", "Hora_entrada", "Hora_salida")
-        VALUES (
-          ${row.Nombre},
-          ${dia},
-          ${decimalToTime(row.Hora_entrada)},
-          ${decimalToTime(row.Hora_salida)}
-        )
-      `;
+      // Inserción usando pool.request() de SQL Server
+      await pool.request()
+        .input("Nombre", row.Nombre)
+        .input("Dia", dia)
+        .input("HoraEntrada", decimalToTime(row.Hora_entrada))
+        .input("HoraSalida", decimalToTime(row.Hora_salida))
+        .query(`
+          INSERT INTO USUARIOS (Nombre, Dia, Hora_entrada, Hora_salida)
+          VALUES (@Nombre, @Dia, @HoraEntrada, @HoraSalida)
+        `);
     }
 
     fs.unlinkSync(req.file.path);

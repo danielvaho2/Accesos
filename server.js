@@ -1,20 +1,29 @@
-/**
- * server.js
- * Cliente de conexión a la base de datos usando `postgres`.
- *
- * Configuración:
- * - Lee la variable de entorno `DATABASE_URL` mediante `dotenv`.
- * - Configura SSL con `require` (útil para despliegues en servicios que exigen TLS).
- *
- * Exporta `sql` para ser usado por los módulos de rutas.
- */
-import postgres from "postgres";
+import sql from "mssql";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const sql = postgres(process.env.DATABASE_URL, {
-  ssl: "require",
+const config = {
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  options: {
+    instanceName: process.env.DB_INSTANCE,
+    encrypt: false,
+    trustServerCertificate: true
+  }
+};
+
+const pool = new sql.ConnectionPool(config);
+const poolConnect = pool.connect();
+
+pool.on("connect", () => {
+  console.log("✅ Conectado a SQL Server Express correctamente");
 });
 
-export default sql;
+pool.on("error", err => {
+  console.error("❌ Error en conexión SQL:", err);
+});
+
+export { pool, poolConnect };

@@ -1,103 +1,112 @@
-/**
- * src/routes/index.js
- * Router principal que maneja la ruta GET `/`.
- *
- * Comportamiento:
- * - Ejecuta una consulta SQL compleja para calcular horas trabajadas
- *   y tramos de horas extras (diurna/nocturna) desde la tabla
- *   `public.USUARIOS`.
- * - Formatea los resultados para la vista `index` y renderiza la plantilla
- *   EJS con la variable `usuarios`.
- *
- * Nota: Este archivo contiene sólo la capa de enrutamiento y presentación;
- * la consulta SQL está embebida aquí por claridad del ejemplo.
- */
 import { Router } from "express";
-import sql from "../../server.js";
+import { pool } from "../../server.js";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const usuarios = await sql`
-     WITH base AS (
-  SELECT
-    "Nombre",
-    "Dia",
-    "Hora_entrada",
-    "Hora_salida",
-
-    ("Hora_salida" - "Hora_entrada" - INTERVAL '1 hour') AS horas_reales
-  FROM public."USUARIOS"
+    // Ejecuta la consulta
+    const result = await pool.request().query(`
+WITH base AS (
+    SELECT
+        Nombre,
+        Dia,
+        Hora_entrada,
+        Hora_salida,
+        DATEADD(SECOND, DATEDIFF(SECOND, Hora_entrada, Hora_salida) - 3600, 0) AS horas_reales,
+        DATEPART(WEEKDAY, Dia) AS dia_num
+    FROM USUARIOS
+),
+limites AS (
+    SELECT *,
+        CASE 
+            WHEN dia_num = 2 THEN 7*3600      -- Lunes
+            WHEN dia_num = 7 THEN 5*3600      -- Sábado
+            WHEN dia_num = 1 THEN 0           -- Domingo
+            ELSE 8*3600                       -- Martes a Viernes
+        END AS limite_segundos
+    FROM base
 ),
 extras AS (
-  SELECT *,
-    CASE 
-      WHEN horas_reales >= INTERVAL '8 hours'
-      THEN horas_reales - INTERVAL '8 hours'
-      ELSE INTERVAL '0'
-    END AS total_extra
-  FROM base
+    SELECT *,
+        CASE
+            WHEN DATEDIFF(SECOND, 0, horas_reales) > limite_segundos
+                THEN DATEDIFF(SECOND, 0, horas_reales) - limite_segundos
+            ELSE 0
+        END AS total_extra_seg
+    FROM limites
 ),
 tramos AS (
-  SELECT *,
-    -- Extra antes de 08:30
-    CASE
-      WHEN "Hora_entrada" < TIME '08:30'
-      THEN LEAST(TIME '08:30', "Hora_salida") - "Hora_entrada"
-      ELSE INTERVAL '0'
-    END AS extra_manana,
-
-    -- Extra después de 17:30
-    CASE
-      WHEN "Hora_salida" > TIME '17:30'
-      THEN LEAST("Hora_salida", TIME '21:00') - GREATEST("Hora_entrada", TIME '17:30')
-      ELSE INTERVAL '0'
-    END AS extra_tarde,
-
-    -- Extra nocturna
-    CASE
-      WHEN "Hora_salida" > TIME '21:00'
-      THEN "Hora_salida" - GREATEST("Hora_entrada", TIME '21:00')
-      ELSE INTERVAL '0'
-    END AS extra_noche
-  FROM extras
+    SELECT *,
+        -- Extra nocturna (después de 21:00)
+        CASE
+            WHEN Hora_salida > '21:00:00'
+                THEN DATEDIFF(
+                        SECOND,
+                        CASE WHEN Hora_entrada > '21:00:00' THEN Hora_entrada ELSE '21:00:00' END,
+                        Hora_salida
+                     )
+            ELSE 0
+        END AS extra_noche_seg
+    FROM extras
 )
 SELECT
-  "Nombre",
-  TO_CHAR("Dia", 'DD/MM/YYYY') AS "Dia",
-  "Hora_entrada",
-  "Hora_salida",
+    Nombre,
+    FORMAT(Dia, 'dd/MM/yyyy') AS Dia,
+    Hora_entrada,
+    Hora_salida,
 
-  LEAST(horas_reales, INTERVAL '8 hours') AS horas_laboradas,
+    -- Horas normales
+    DATEADD(SECOND,
+        CASE 
+            WHEN DATEDIFF(SECOND, 0, horas_reales) > limite_segundos
+                THEN limite_segundos
+            ELSE DATEDIFF(SECOND, 0, horas_reales)
+        END,
+    0) AS horas_laboradas,
 
-  CASE
-    WHEN total_extra = INTERVAL '0' THEN INTERVAL '0'
-    ELSE LEAST(total_extra, extra_manana + extra_tarde)
-  END AS extra_diurna_total,
+    -- Extra nocturna
+    DATEADD(SECOND,
+        CASE 
+            WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
+            ELSE extra_noche_seg
+        END,
+    0) AS extra_nocturna,
 
-  CASE
-    WHEN total_extra = INTERVAL '0' THEN INTERVAL '0'
-    ELSE LEAST(total_extra - LEAST(total_extra, extra_manana + extra_tarde), extra_noche)
-  END AS extra_nocturna
+    -- Extra diurna = total extra - nocturna
+    DATEADD(SECOND,
+        total_extra_seg -
+        CASE 
+            WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
+            ELSE extra_noche_seg
+        END,
+    0) AS extra_diurna_total
 
-FROM tramos;
-    `;
+FROM tramos
+`);
+
+    // Accede al array real
+    const usuarios = result.recordset;
 
     // Formatea campos de intervalo a HH:MM:SS para la vista
-    const usuariosFormateados = usuarios.map((u) => ({
-      ...u,
-      horas_laboradas: u.horas_laboradas
-        ? u.horas_laboradas.toString().slice(0, 8)
-        : "00:00:00",
-      extra_diurna_total: u.extra_diurna_total
-        ? u.extra_diurna_total.toString().slice(0, 8)
-        : "00:00:00",
-      extra_nocturna: u.extra_nocturna
-        ? u.extra_nocturna.toString().slice(0, 8)
-        : "00:00:00",
-    }));
+   function formatearHora(dateObj) {
+  if (!dateObj) return "00:00:00";
 
+  const horas = String(dateObj.getHours()).padStart(2, "0");
+  const minutos = String(dateObj.getMinutes()).padStart(2, "0");
+  const segundos = String(dateObj.getSeconds()).padStart(2, "0");
+
+  return dateObj.toISOString().substring(11, 19);
+}
+
+const usuariosFormateados = usuarios.map((u) => ({
+  ...u,
+  Hora_entrada: formatearHora(u.Hora_entrada),
+  Hora_salida: formatearHora(u.Hora_salida),
+  horas_laboradas: formatearHora(u.horas_laboradas),
+  extra_diurna_total: formatearHora(u.extra_diurna_total),
+  extra_nocturna: formatearHora(u.extra_nocturna),
+}));
     res.render("index", { usuarios: usuariosFormateados });
   } catch (error) {
     console.error(error);
