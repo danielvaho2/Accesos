@@ -57,17 +57,17 @@
             >
           </div>
 
-          <div class="col-md-3 d-grid">
+          <div class="col-md-3 bg-light ">
             <button class="btn btn-primary" type="submit">
-              🔎 Filtrar
+              🔎 
             </button>
+          
+            <a href="/" class="btn btn-secondary">
+              Limpiar
+            </a>
+         
           </div>
 
-          <div class="col-md-3 d-grid">
-            <a href="/" class="btn btn-secondary">
-              ♻ Limpiar
-            </a>
-          </div>
 
         </form>
       </div>
@@ -116,14 +116,22 @@
           </tr>
         <% }) %>
 
-        <% if (hacerSumatoria && totales) { %>
-          <tr class="table-warning fw-bold">
-            <td colspan="4">TOTAL</td>
-            <td><%= totales.horas %></td>
-            <td><%= totales.extra_diurna %></td>
-            <td><%= totales.extra_nocturna %></td>
-          </tr>
-        <% } %>
+     <% if (hacerSumatoria && totales) { %>
+  <tr class="table-warning fw-bold">
+    <td colspan="4">TOTAL</td>
+    <td><%= totales.horas %></td>
+    <td><%= totales.extra_diurna %></td>
+    <td><%= totales.extra_nocturna %></td>
+  </tr>
+
+  <!-- Fila del botón -->
+  <tr>
+    <td colspan="7" class="text-end">
+      <button class="btn btn-primary">Imprimir</button>
+    </td>
+  </tr>
+<% } %>
+ 
 
       </tbody>
     </table>
@@ -134,7 +142,7 @@
 
     <!-- SUBIR EXCEL -->
     <div class="card shadow">
-      <div class="card-header bg-success text-white">
+      <div class="card-header bg-primary text-white">
         <h4 class="mb-0">Subir Excel de empleados</h4>
       </div>
       <div class="card-body">
@@ -143,8 +151,8 @@
             <input class="form-control" type="file" name="file" accept=".xlsx" required>
           </div>
           <div class="col-md-4 d-grid">
-            <button class="btn btn-success" type="submit">
-              📤 Subir Excel
+            <button class="btn btn-primary" type="submit">
+              Subir Excel
             </button>
           </div>
         </form>

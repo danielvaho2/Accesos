@@ -33,7 +33,15 @@ WITH base AS (
         Dia,
         Hora_entrada,
         Hora_salida,
-        DATEADD(SECOND, DATEDIFF(SECOND, Hora_entrada, Hora_salida) - 3600, 0) AS horas_reales,
+
+        DATEADD(SECOND,
+            DATEDIFF(SECOND, Hora_entrada, Hora_salida)
+            - CASE 
+                WHEN DATEPART(WEEKDAY, Dia) = 7 THEN 0   -- sábado NO descuenta
+                ELSE 3600                                -- otros días sí
+              END,
+        0) AS horas_reales,
+
         DATEPART(WEEKDAY, Dia) AS dia_num
     FROM USUARIOS
     ${whereClause}
