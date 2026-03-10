@@ -107,11 +107,12 @@ SELECT
             CASE 
                 WHEN extra_noche_seg > total_extra_seg THEN total_extra_seg
                 ELSE extra_noche_seg
+               
             END, 0)
     ) AS extra_nocturna_seg
 
 FROM tramos
-ORDER BY Dia
+ORDER BY Dia ASC
 `);
 
     let usuarios = result.recordset;
