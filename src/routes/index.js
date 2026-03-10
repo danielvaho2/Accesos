@@ -3,7 +3,7 @@ import { pool } from "../../server.js";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+async function obtenerDatos(req, res, viewName) {
   try {
     const { fechaInicio, fechaFin, nombre } = req.query;
 
@@ -147,7 +147,7 @@ ORDER BY Dia ASC
       extra_nocturna: segundosAHHMMSS(u.extra_nocturna_seg)
     }));
 
-    res.render("index", {
+    res.render(viewName, {
       usuarios,
       fechaInicio,
       fechaFin,
@@ -160,6 +160,14 @@ ORDER BY Dia ASC
     console.error(error);
     res.status(500).send("Error obteniendo datos");
   }
+}
+
+router.get("/", async (req, res) => {
+  await obtenerDatos(req, res, "index");
+});
+
+router.get("/imprimir", async (req, res) => {
+  await obtenerDatos(req, res, "imprimir");
 });
 
 export default router;

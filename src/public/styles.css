@@ -1,0 +1,316 @@
+/* === REGLAS GENERALES === */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 0 0, #e0f2fe 0, #f3f4f6 45%, #f3f4f6 100%);
+  color: #111827;
+  font-size: 16px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+/* === HEADER (Encabezado de la página) === */
+header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+header p {
+  margin: 6px 0 0;
+  font-size: 18px;
+  color: #6b7280;
+}
+
+/* === TARJETAS GENERALES === */
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 18px;
+}
+
+/* === CABECERA DE TARJETA === */
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.card-header small {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+/* === CUERPO DE TARJETA === */
+.card-body {
+  padding: 14px 16px 16px;
+}
+
+/* === FILTROS Y FILAS === */
+.filters-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 800px) {
+  .filters-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .filters-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* === CAMPOS DE FORMULARIO === */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 18px;
+}
+
+.field label {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.field input[type="date"],
+.field input[type="text"],
+.field input[type="file"] {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px #22c55e33;
+}
+
+/* === ACCIONES: BOTONES Y FILA === */
+.actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: #16a34a;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  border-color: #15803d;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #f3f4f6;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.btn-ghost:hover {
+  background: #e0f2fe;
+}
+
+/* === RESUMEN DE FILTROS === */
+.filters-summary {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filters-summary span strong {
+  color: #111827;
+}
+
+/* === TABLA PRINCIPAL DE RESULTADOS === */
+/*
+  Intercalado blanco y gris en filas de las tablas de resultados.
+  - Las filas impares de <tbody> serán blancas (#ffffff)
+  - Las filas pares serán gris claro (#f9fafb)
+*/
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 18px;
+  min-width: 700px;
+}
+
+thead {
+  background: #f9fafb;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+
+/* 
+  Definición de colores intercalados en las filas del cuerpo de la tabla:
+  - Impar: blanco
+  - Par: gris claro
+*/
+tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+tbody tr:hover {
+  background: #eff6ff;
+}
+
+.text-muted {
+  color: #9ca3af;
+}
+
+.totals-row {
+  background: #f4f4f4;
+  font-weight: 600;
+}
+
+/* === FOOTER DE TABLA === */
+.table-footer {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* === PISTA DE SUBIDA DE ARCHIVOS === */
+.upload-hint {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+/* === ESTILOS PARA IMPRESIÓN === */
+@media print {
+  body {
+    background: #ffffff;
+  }
+  .container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  header,
+  .card:nth-of-type(3) {
+    display: none;
+  }
+  .card,
+  .card-header,
+  .card-body {
+    box-shadow: none;
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+  .table-wrapper {
+    border: none;
+  }
+  table {
+    min-width: 0;
+    font-size: 11px;
+  }
+  th,
+  td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+  }
+  thead {
+    background: #e5e7eb;
+  }
+  .table-footer {
+    display: none;
+  }
+}
